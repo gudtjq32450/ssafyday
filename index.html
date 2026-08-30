@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>플레이리스트 맞추기 게임</title>
+    
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/night.min.css" id="theme">
+    
+    <!-- 폰트 설정 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 900;
+            text-transform: none;
+        }
+        .highlight {
+            color: #ff2a6d;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .highlight-blue {
+            color: #05d9e8;
+        }
+        .highlight-yellow {
+            color: #ffd700;
+        }
+        .box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            border-radius: 12px;
+            margin: 10px 0;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .timer-container {
+            margin-top: 10px;
+        }
+        #timer-display {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #05d9e8;
+            margin-bottom: 8px;
+            font-family: monospace;
+            line-height: 1;
+        }
+        .start-btn {
+            background-color: #ff2a6d;
+            color: white;
+            border: none;
+            padding: 10px 32px;
+            font-size: 0.75em;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .start-btn:hover {
+            transform: scale(1.05);
+            background-color: #e01b5a;
+        }
+        .start-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .board-btn {
+            padding: 10px 24px;
+            font-size: 0.65em;
+            background: #05d9e8;
+            color: #111;
+            font-weight: bold;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.2s;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .board-btn:hover {
+            transform: scale(1.05);
+            background: #00bfd0;
+        }
+
+        /* 문제 선택 그리드 */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            max-width: 850px;
+            margin: 20px auto 0 auto;
+        }
+        .quiz-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 2px solid #05d9e8;
+            color: #fff;
+            padding: 12px 0;
+            font-size: 0.6em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .quiz-btn:hover {
+            background: #05d9e8;
+            color: #000;
+            transform: translateY(-3px);
+        }
+        .quiz-btn.solved {
+            background: rgba(255, 42, 109, 0.2);
+            border-color: #ff2a6d;
+            color: #ffd700;
+            font-size: 0.6em;
+            cursor: default;
+            transform: none;
+        }
+
+        /* 상단 텍스트 영역 */
+        #q-header-area {
+            transition: all 0.3s ease;
+            max-height: 200px;
+            opacity: 1;
+            overflow: hidden;
+        }
+        #q-header-area.hidden-header {
+            max-height: 0;
+            opacity: 0;
+            margin: 0;
+            pointer-events: none;
+        }
+
+        /* 문제 슬라이드 내 영상 자리 확보용 플레이스홀더 */
+        #video-placeholder {
+            width: 440px;
+            height: 240px;
+            margin: 8px auto;
+            transition: all 0.4s ease-in-out;
+        }
+        #video-placeholder.expanded {
+            width: 720px;
+            height: 405px;
+        }
+
+        /* ==========================================================================
+           전역 고정 비디오 박스 (PIP 기능 탑재)
+           ========================================================================== */
+        #global-video-box {
+            position: fixed;
+            z-index: 999;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            transition: all 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+            pointer-events: auto;
+        }
+
+        /* 1. 문제 풀이 기본 모드 (중앙) */
+        #global-video-box.center-mode {
+            top: 45%;
+            left: 50%;
+            width: 440px;
+            height: 240px;
+            transform: translate(-50%, -50%);
+            display: block;
+        }
+
+        /* 2. 문제 풀이 확대 모드 (시작 버튼 클릭 시) */
+        #global-video-box.expanded-mode {
+            top: 44%;
+            left: 50%;
+            width: 720px;
+            height: 405px;
+            transform: translate(-50%, -50%);
+            display: block;
+        }
+
+        /* 3. 우측 상단 PIP 모드 (정답 화면, 문제판 등 모든 곳에서 BGM 유지) */
+        #global-video-box.pip-mode {
+            top: 20px;
+            left: auto;
+            right: 20px;
+            width: 220px;
+            height: 124px;
+            transform: none;
+            display: block;
+            border-color: #05d9e8;
+        }
+
+        /* 4. 초기 오프닝 등 비활성 상태 */
+        #global-video-box.hidden-mode {
+            display: none;
+        }
+
+        #global-video-box iframe {
+            width: 100% !important;
+            height: 100% !important;
+            border: none;
+        }
+
+        /* 상단/하단 가림막 (스포일러 방지) */
+        .overlay-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 22%;
+            background: #111;
+            z-index: 10;
+            pointer-events: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .overlay-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 18%;
+            background: #111;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .score-table {
+            width: 70%;
+            margin: 20px auto;
+            font-size: 0.8em;
+        }
+        .score-table td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .score-table tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ★ Reveal.js 외부에 독립 배치된 유튜브 영상 (PIP 연동) -->
+    <div id="global-video-box" class="hidden-mode">
+        <div class="overlay-top"></div>
+        <div id="yt-player"></div>
+        <div class="overlay-bottom"></div>
+    </div>
+
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- 슬라이드 1: 오프닝 -->
+            <section>
+                <h3>🎵 이 노래... 과연 🎵</h3>
+                <h2 class="highlight">누구의 취향일까?</h2>
+                <p style="margin-top: 20px; font-size: 0.75em; color: #bbb;">자치회 3인의 플리 대공개!</p>
+                <div class="box" style="font-size: 0.58em; text-align: left; max-width: 750px; margin: 15px auto 0 auto; line-height: 1.6; padding: 16px 20px;">
+                    <p style="margin: 4px 0;">✔️ <b>룰 설명:</b> 노래 하이라이트 15초를 듣고, 3명 중 누구 곡인지 맞추기</p>
+                    <p style="margin: 4px 0;">✔️ <b>진행 방식:</b> 4팀 대항전</p>
+                    <p style="margin: 4px 0;">✔️ <b>보상:</b> 1등 팀 전원 <span class="highlight-yellow">기프티콘</span> 증정!</p>
+                </div>
+            </section>
+
+            <!-- 슬라이드 2: AI 분석 결과 -->
+            <section>
+                <h2 style="font-size: 1.3em; margin-bottom: 15px;">🤖 <span class="highlight-blue">AI가 분석한</span> 3인의 음악 취향</h2>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: left; font-size: 0.4em; line-height: 1.5;">
+                    
+                    <!-- 나현 -->
+                    <div class="box" style="padding: 10px; margin: 0; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border-top: 3px solid #ff7675; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h4 style="font-size: 1.25em; margin: 0 0 6px 0; color: #ff7675;">👑 나현</h4>
+                            <p style="margin: 0 0 4px 0;">• 새벽 감성 인디 밴드 & 싱어송라이터 애호가</p>
+                            <p style="margin: 0 0 4px 0;">• 2000~2010년대 2세대 걸그룹 명곡 과몰입</p>
+                            <p style="margin: 0 0 8px 0;">• 예쁜 가사와 어쿠스틱·밴드 멜로디 선호</p>
+                        </div>
+                        <div style="background: rgba(255, 118, 117, 0.15); border: 1px solid rgba(255, 118, 117, 0.4); border-radius: 6px; padding: 5px 6px;">
+                            <p style="margin: 0; font-weight: bold; color: #ff7675; font-size: 0.95em;">🔑 키워드!</p>
+                            <p style="margin: 2px 0 0 0; color: #fff; font-weight: 500;">#홍대병말기 #탑골가요탑승 #감성충</p>
+                        </div>
+                    </div>
+
+                    <!-- 묘석 -->
+                    <div class="box" style="padding: 10px; margin: 0; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border-top: 3px solid #74b9ff; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h4 style="font-size: 1.25em; margin: 0 0 6px 0; color: #74b9ff;">⚡ 묘석</h4>
+                            <p style="margin: 0 0 4px 0;">• 빌보드 메가 히트 팝송 & 트렌디 EDM</p>
+                            <p style="margin: 0 0 4px 0;">• 벅차오르는 청량 K-밴드 & 드라이브용 힙합</p>
+                            <p style="margin: 0 0 8px 0;">• 분위기를 단숨에 띄우는 떼창·댄스 멜로디</p>
+                        </div>
+                        <div style="background: rgba(255, 185, 128, 0.15); border: 1px solid rgba(116, 185, 255, 0.4); border-radius: 6px; padding: 5px 6px;">
+                            <p style="margin: 0; font-weight: bold; color: #74b9ff; font-size: 0.95em;">🔑 키워드!</p>
+                            <p style="margin: 2px 0 0 0; color: #fff; font-weight: 500;">#알고리즘노예 #언더독멸시 #인싸호소인</p>
+                        </div>
+                    </div>
+
+                    <!-- 형섭 -->
+                    <div class="box" style="padding: 10px; margin: 0; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border-top: 3px solid #a29bfe; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h4 style="font-size: 1.25em; margin: 0 0 6px 0; color: #a29bfe;">🎧 형섭</h4>
+                            <p style="margin: 0 0 4px 0;">• 클래식 올드팝, 재즈 & 웅장한 영화/게임 OST</p>
+                            <p style="margin: 0 0 4px 0;">• 서사가 짙은 국내 묵직한 힙합 & R&B</p>
+                            <p style="margin: 0 0 8px 0;">• 깊은 밤 위스키와 어울리는 빈티지 무드</p>
+                        </div>
+                        <div style="background: rgba(162, 155, 254, 0.15); border: 1px solid rgba(162, 155, 254, 0.4); border-radius: 6px; padding: 5px 6px;">
+                            <p style="margin: 0; font-weight: bold; color: #a29bfe; font-size: 0.95em;">🔑 키워드!</p>
+                            <p style="margin: 2px 0 0 0; color: #fff; font-weight: 500;">#틀딱LP충 #롤대남과몰입 #힙스터된장남</p>
+                        </div>
+                    </div>
+
+                </div>
+                <p style="font-size: 0.4em; color: #888; margin-top: 10px;">※ 위 힌트를 잘 기억하고 문제를 풀어주세요!</p>
+            </section>
+
+            <!-- 슬라이드 3: 게임 시작 -->
+            <section data-background-color="#ff2a6d" data-transition="zoom">
+                <h1>Are You Ready?</h1>
+                <h2 style="color: white; margin-top: 20px;">GAME START! 🚀</h2>
+            </section>
+
+            <!-- 슬라이드 4: 문제 선택판 (메인 보드) -->
+            <section id="board-slide">
+                <h2 style="font-size: 1.4em;">🎯 <span class="highlight">문제 번호</span>를 골라주세요!</h2>
+                <p style="font-size: 0.5em; color: #aaa;">원하는 문제 번호를 클릭하면 해당 문제로 이동합니다.</p>
+                <div class="grid-container" id="quiz-grid">
+                    <!-- JS로 27개 버튼 생성 -->
+                </div>
+            </section>
+
+            <!-- 슬라이드 5: 공통 문제 출제 화면 -->
+            <section id="question-slide">
+                <div id="q-header-area">
+                    <h2 style="color: #aaa; font-size: 1.3em; margin: 0 0 4px 0;" id="q-round-title">Question 1</h2>
+                    <h3 style="font-size: 1.2em; margin: 0 0 4px 0;">다음 노래의 <span class="highlight">주인</span>은?</h3>
+                    <p style="font-size: 0.55em; color: #eee; margin: 0 0 6px 0;">( 나현 / 묘석 / 형섭 )</p>
+                </div>
+                
+                <!-- 비디오 위치 공간 확보용 플레이스홀더 -->
+                <div id="video-placeholder"></div>
+
+                <div class="timer-container">
+                    <div id="timer-display">15 : 00</div>
+                    <button class="start-btn" id="start-timer-btn" onclick="startPlayAndTimer()">노래 재생 & 15초 카운트다운</button>
+                </div>
+            </section>
+
+            <!-- 슬라이드 6: 공통 정답 공개 화면 -->
+            <section id="answer-slide">
+                <h2>🎉 정답 공개 🎉</h2>
+                <div class="box" style="font-size: 0.75em; text-align: left; max-width: 650px; margin: 15px auto;">
+                    <p style="margin: 6px 0;">🎵 <b>노래:</b> <span id="ans-title" style="color: #05d9e8;">-</span></p>
+                    <p style="margin: 6px 0;">🎤 <b>가수:</b> <span id="ans-artist">-</span></p>
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 12px 0;">
+                    <p style="margin: 6px 0;">👤 <b>플리 주인:</b> <span id="ans-owner" class="highlight-yellow" style="font-size: 1.6em; margin-left: 10px;">-</span></p>
+                </div>
+                <button class="board-btn" onclick="backToBoard()">📋 문제 선택판으로 돌아가기</button>
+            </section>
+
+            <!-- 슬라이드 7: 중간 점수 확인 -->
+            <section>
+                <h2>📊 현재 스코어 📊</h2>
+                <table class="score-table">
+                    <tr><td>1팀</td><td style="text-align: right; font-weight: bold; font-size: 1.3em; color: #05d9e8;">[ ] 점</td></tr>
+                    <tr><td>2팀</td><td style="text-align: right; font-weight: bold; font-size: 1.3em; color: #05d9e8;">[ ] 점</td></tr>
+                    <tr><td>3팀</td><td style="text-align: right; font-weight: bold; font-size: 1.3em; color: #05d9e8;">[ ] 점</td></tr>
+                    <tr><td>4팀</td><td style="text-align: right; font-weight: bold; font-size: 1.3em; color: #05d9e8;">[ ] 점</td></tr>
+                </table>
+            </section>
+
+            <!-- 슬라이드 8: 시상식 -->
+            <section data-background-color="#ffd700">
+                <h2 style="color: #1a1a2e;">🏆 영예의 1등 팀 🏆</h2>
+                <h1 style="color: #ff2a6d; margin: 30px 0;">축하합니다!</h1>
+                <p style="color: #1a1a2e; font-weight: bold; font-size: 0.9em;">앞으로 나와서 상품을 수령해 주세요 🎁</p>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js & YouTube IFrame API -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script>
+        Reveal.initialize({
+            width: 1050,
+            height: 700,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: true,
+            progress: true,
+            center: true,
+            hash: true,
+            transition: 'slide',
+            autoPlayMedia: false
+        });
+
+        /* ==========================================================================
+           [퀴즈 데이터]
+           ★ startTime: 시작 초 (예: 1분 15초 -> startTime: 75)
+           ========================================================================== */
+        const quizData = [
+            { id: 1,  owner: "묘석", title: "옥탑방", artist: "엔플라잉", videoId: "VpaUh_BGqE0", startTime: 53 },
+            { id: 2,  owner: "묘석", title: "Pink Venom", artist: "블랙핑크", videoId: "9jzugIzksag", startTime: 43 },
+            { id: 3,  owner: "묘석", title: "삐딱하게", artist: "지드래곤", videoId: "dwNrkaWPc5g", startTime: 58 },
+            { id: 4,  owner: "형섭", title: "Kapp'n's Bus", artist: "animal crossing city folk (ost)", videoId: "kc5HCRZrX-U", startTime: 0 },
+            { id: 5,  owner: "형섭", title: "Legends Never Die", artist: "League of Legends", videoId: "hTwBjqnXv2o", startTime: 64 },
+            { id: 6,  owner: "나현", title: "청춘", artist: "우효", videoId: "qv4tslDFnK8", startTime: 61 },
+            { id: 7,  owner: "나현", title: "my darling", artist: "악동뮤지션", videoId: "sEm2xWNCyo4", startTime: 43 },
+            { id: 8,  owner: "묘석", title: "고민중독", artist: "QWER", videoId: "hFTs6HbtxbE", startTime: 48 },
+            { id: 9,  owner: "묘석", title: "God God God", artist: "EK", videoId: "whvzimvhc_Y", startTime: 30 },
+            { id: 10, owner: "형섭", title: "Lemon", artist: "米津玄師 (Kenshi Yonezu)", videoId: "SX_ViT4Ra7k", startTime: 57 },
+            { id: 11, owner: "묘석", title: "사라진 모든 것들에게", artist: "코드쿤스트, 잔나비, 사이먼도미닉", videoId: "KqjRlE0nlVc", startTime: 37 },
+            { id: 12, owner: "형섭", title: "Don`t Touch", artist: "Dan Farber", videoId: "uBOk2Z7OJy0", startTime: 23 },
+            { id: 13, owner: "나현", title: "기대해", artist: "걸스데이", videoId: "iUtGJtyoIfg", startTime: 47 },
+            { id: 14, owner: "묘석", title: "아브라카다브라", artist: "브아걸", videoId: "dWsWbd7xauA", startTime: 58 },
+            { id: 15, owner: "형섭", title: "River (슈퍼밴드2)", artist: "김예지", videoId: "uLwl2OQsr1A", startTime: 48 },
+            { id: 16, owner: "묘석", title: "The Boys", artist: "소녀시대", videoId: "6pA_Tou-DPI", startTime: 188 },
+            { id: 17, owner: "나현", title: "별빛달빛", artist: "시크릿", videoId: "iTVfJ1j7o-A", startTime: 38 },
+            { id: 18, owner: "묘석, 형섭", title: "And July", artist: "Heize", videoId: "rCeM57e2BfU", startTime: 44 },
+            { id: 19, owner: "묘석, 형섭", title: "RISE", artist: "League of Legends", videoId: "fB8TyLTD7EE", startTime: 52 },
+            { id: 20, owner: "나현", title: "민들레", artist: "우효", videoId: "Kaq4LFM47I0", startTime: 60 }, 
+            { id: 21, owner: "형섭", title: "아침에 베란다에서 담배를 피는건", artist: "COLOR WHITE", videoId: "mQ7E-JIQsLQ", startTime: 70 },
+            { id: 22, owner: "나현", title: "비행기", artist: "거북이", videoId: "-CYezUeha1Q", startTime: 45 },
+            { id: 23, owner: "나현", title: "낭만고양이", artist: "체리필터", videoId: "Nh5Ld4EpXJs", startTime: 51 },
+            { id: 24, owner: "형섭", title: "사랑이 할 수 있는 일이 아직 있을까", artist: "RADWIMPS", videoId: "pripU1NPw3E", startTime: 85 },
+            { id: 25, owner: "나현", title: "사랑한다는 말로도 위로가 되지 않는", artist: "브로콜리너마저", videoId: "UutST1ksrgw", startTime: 70 },
+            { id: 26, owner: "나현", title: "Tik Tak Tok", artist: "실리카겔", videoId: "DIPxnt5vnhU", startTime: 163 },
+            { id: 27, owner: "형섭", title: "누구를 위한 삶인가 (사생결단 OST)", artist: "리쌍 (LEESSANG)", videoId: "fcxJgo3wUSc", startTime: 97 },
+            { id: 28, owner: "형섭", title: "탓", artist: "이병재-빈첸", videoId: "97sqa686HBc", startTime: 37 },
+            { id: 29, owner: "나현", title: "Dear Old Stockholm", artist: "Eddie Higgins Trio", videoId: "jPj2uxKhaSU", startTime: 1 },
+            { id: 30, owner: "묘석", title: "Rainism", artist: "비", videoId: "8vNhGudh_b0", startTime: 59 },
+        ];
+
+        let currentQuestion = null;
+        let solvedStatus = {};
+        let player = null;
+        let isPlayerReady = false;
+        let timerInterval = null;
+        let isPlaying = false;
+
+        // YouTube Player 초기화
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('yt-player', {
+                height: '100%',
+                width: '100%',
+                videoId: 'VpaUh_BGqE0',
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0,
+                    'rel': 0,
+                    'enablejsapi': 1
+                },
+                events: {
+                    'onReady': () => { isPlayerReady = true; }
+                }
+            });
+        }
+
+        // 문제 선택 그리드 렌더링
+        function renderBoard() {
+            const grid = document.getElementById('quiz-grid');
+            grid.innerHTML = '';
+            quizData.forEach(q => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-btn';
+                btn.id = `btn-quiz-${q.id}`;
+                
+                if (solvedStatus[q.id]) {
+                    btn.innerText = `${solvedStatus[q.id]}`;
+                    btn.classList.add('solved');
+                } else {
+                    btn.innerText = `Q${q.id}`;
+                    btn.onclick = () => selectQuiz(q.id);
+                }
+                grid.appendChild(btn);
+            });
+        }
+
+        // 특정 문제 선택 시 실행 (이전 노래를 멈추고 새 문제 준비)
+        function selectQuiz(quizId) {
+            if (isPlayerReady && player) {
+                player.pauseVideo();
+            }
+            clearInterval(timerInterval);
+            isPlaying = false;
+
+            currentQuestion = quizData.find(q => q.id === quizId);
+            
+            // UI 초기화
+            document.getElementById('q-header-area').classList.remove('hidden-header');
+            document.getElementById('video-placeholder').classList.remove('expanded');
+            
+            // 비디오 박스를 문제 중앙 위치로 설정
+            const vidBox = document.getElementById('global-video-box');
+            vidBox.className = 'center-mode';
+
+            document.getElementById('q-round-title').innerText = `Question ${currentQuestion.id}`;
+            document.getElementById('timer-display').innerText = "15 : 00";
+            document.getElementById('timer-display').style.color = "#05d9e8";
+            
+            const startBtn = document.getElementById('start-timer-btn');
+            startBtn.disabled = false;
+            startBtn.innerText = "노래 재생 & 15초 카운트다운";
+
+            document.getElementById('ans-title').innerText = currentQuestion.title;
+            document.getElementById('ans-artist').innerText = currentQuestion.artist;
+            document.getElementById('ans-owner').innerText = currentQuestion.owner;
+
+            if (isPlayerReady && currentQuestion.videoId) {
+                player.cueVideoById({
+                    videoId: currentQuestion.videoId,
+                    startSeconds: currentQuestion.startTime || 0
+                });
+            }
+
+            Reveal.slide(4); // 문제 슬라이드로 이동
+        }
+
+        // 노래 재생 & 15초 카운트다운 시작 (확대 애니메이션)
+        function startPlayAndTimer() {
+            document.getElementById('q-header-area').classList.add('hidden-header');
+            document.getElementById('video-placeholder').classList.add('expanded');
+            
+            const vidBox = document.getElementById('global-video-box');
+            vidBox.className = 'expanded-mode';
+
+            const display = document.getElementById('timer-display');
+            const btn = document.getElementById('start-timer-btn');
+
+            if (isPlayerReady && currentQuestion && currentQuestion.videoId) {
+                player.seekTo(currentQuestion.startTime || 0, true);
+                player.playVideo();
+                isPlaying = true;
+            }
+
+            let timeLeft = 15;
+            btn.disabled = true;
+            btn.innerText = "음악 재생 중...";
+            display.style.color = "#05d9e8";
+            display.innerText = timeLeft + " : 00";
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 5) {
+                    display.style.color = "#ff2a6d";
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    display.innerText = "TIME OUT!";
+                    btn.innerText = "시간 종료 (재생 유지 중)";
+                } else {
+                    display.innerText = (timeLeft < 10 ? "0" + timeLeft : timeLeft) + " : 00";
+                }
+            }, 1000);
+        }
+
+        // 정답 확인 후 문제판으로 복귀 (우측 상단 PIP 모드로 이동)
+        function backToBoard() {
+            if (currentQuestion) {
+                solvedStatus[currentQuestion.id] = currentQuestion.owner;
+                clearInterval(timerInterval);
+            }
+            renderBoard();
+            Reveal.slide(3); // 문제 선택판 슬라이드로 이동
+        }
+
+        // 슬라이드 이동 시 비디오 위치 자동 전환 (PIP 모드 컨트롤)
+        Reveal.on('slidechanged', event => {
+            const vidBox = document.getElementById('global-video-box');
+            const slideIdx = event.indexh;
+
+            if (slideIdx === 4) {
+                // 문제 슬라이드일 때는 중앙 위치 유지
+                if (document.getElementById('q-header-area').classList.contains('hidden-header')) {
+                    vidBox.className = 'expanded-mode';
+                } else {
+                    vidBox.className = 'center-mode';
+                }
+            } else if (isPlaying) {
+                // 노래가 재생 중인 상태에서 정답 슬라이드(5)나 문제판(3) 등으로 넘어가면 우측 상단 PIP로 이동!
+                vidBox.className = 'pip-mode';
+            } else if (slideIdx < 3) {
+                // 오프닝 등 앞쪽 화면에서는 숨김
+                vidBox.className = 'hidden-mode';
+            }
+        });
+
+        renderBoard();
+    </script>
+</body>
+</html>
