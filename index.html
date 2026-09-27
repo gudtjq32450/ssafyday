@@ -1063,6 +1063,346 @@
             gap: 8px;
             margin-top: 16px;
         }
+
+        /* ================= [화면 2.5] 조 순서 랜덤 추첨 화면 (네임태그 셔플) ================= */
+        .order-screen-content {
+            width: 100%;
+            max-width: 1200px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+        }
+        .order-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .order-header h2 {
+            font-size: 1.7em;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .order-set-topic-badge {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1.5px solid var(--yellow);
+            color: var(--yellow);
+            font-size: 1.05em;
+            font-weight: 800;
+            padding: 4px 18px;
+            border-radius: 20px;
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
+        }
+        .order-guide-text {
+            color: #aaa;
+            font-size: 0.85em;
+            margin-top: 2px;
+        }
+
+        /* 4개 순서 슬롯 그리드 (가로 4등분 정렬) */
+        .order-slots-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 1060px;
+            margin: auto 0;
+        }
+        .order-slot {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px dashed rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+        }
+        .order-slot.slot-determined {
+            background: rgba(255, 255, 255, 0.06);
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .slot-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 4px;
+        }
+        .slot-rank-title {
+            font-size: 1.15em;
+            font-weight: 900;
+            color: #fff;
+        }
+        .slot-rank-badge {
+            font-size: 0.82em;
+            font-weight: 800;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ddd;
+            padding: 2px 10px;
+            border-radius: 12px;
+        }
+
+        /* 네임 태그 (방송용 명찰 스타일) */
+        .order-nametag {
+            width: 100%;
+            min-height: 180px;
+            border-radius: 14px;
+            border: 2.5px solid var(--border-color);
+            padding: 18px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+            position: relative;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+        }
+        .order-nametag .tag-pin {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            font-size: 1.1em;
+            opacity: 0.8;
+        }
+        .order-nametag .tag-team-badge {
+            font-size: 0.95em;
+            font-weight: 900;
+            padding: 4px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .order-nametag .tag-player-name {
+            font-size: 2em;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+            margin: 4px 0;
+        }
+        .order-nametag .tag-batter-role {
+            font-size: 0.85em;
+            font-weight: 700;
+            color: #ccc;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 3px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .order-nametag .tag-repeat-pill {
+            font-size: 0.75em;
+            font-weight: 800;
+            color: #000;
+            background: var(--yellow);
+            padding: 2px 8px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        /* 셔플 애니메이션 */
+        @keyframes tagShuffleVibe {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.06) translateY(-6px); }
+            100% { transform: scale(0.96) translateY(4px); }
+        }
+        .order-nametag.is-shuffling {
+            animation: tagShuffleVibe 0.1s infinite alternate ease-in-out;
+        }
+
+        /* 확정 시 팝 애니메이션 */
+        @keyframes tagLockIn {
+            0% { transform: scale(0.85); opacity: 0.6; }
+            65% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .order-nametag.is-settled {
+            animation: tagLockIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 하단 액션 버튼들 */
+        .order-action-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 10px;
+        }
+        .order-btn-shuffle {
+            background: linear-gradient(135deg, #05d9e8, #00b4ff);
+            color: #000;
+            font-size: 1.1em;
+            font-weight: 900;
+            padding: 12px 28px;
+            border-radius: 28px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(5, 217, 232, 0.45);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .order-btn-shuffle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(5, 217, 232, 0.65);
+        }
+        .order-btn-start {
+            background: linear-gradient(135deg, #ff2a6d, #ff5e7e);
+            color: #fff;
+            font-size: 1.25em;
+            font-weight: 900;
+            padding: 13px 40px;
+            border-radius: 30px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 24px rgba(255, 42, 109, 0.55);
+            transition: all 0.2s;
+            font-family: inherit;
+            animation: pulseGlow 1.8s infinite;
+        }
+        .order-btn-start:hover {
+            transform: scale(1.06);
+            box-shadow: 0 10px 32px rgba(255, 42, 109, 0.8);
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 15px rgba(255, 42, 109, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 42, 109, 0.8); }
+            100% { box-shadow: 0 0 15px rgba(255, 42, 109, 0.4); }
+        }
+        .order-btn-back {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--border-color);
+            color: #ccc;
+            font-size: 0.95em;
+            font-weight: 700;
+            padding: 11px 22px;
+            border-radius: 22px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .order-btn-back:hover {
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+        }
+
+        /* 퀴즈 상단 순서 체인 바 & 땡! 토스 알림 배너 */
+        .quiz-order-chain-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 6px;
+            padding: 5px 16px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .chain-step {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 0.88em;
+            font-weight: 800;
+            opacity: 0.5;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .chain-step.current {
+            opacity: 1;
+            transform: scale(1.1);
+            background: rgba(255, 215, 0, 0.18);
+            border: 1.5px solid var(--yellow);
+            color: var(--yellow);
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
+        }
+        .chain-arrow {
+            color: #666;
+            font-size: 0.8em;
+            font-weight: 900;
+        }
+        .toss-alert-banner {
+            display: none;
+            background: linear-gradient(90deg, #ff2a6d, #ff5e7e);
+            color: #fff;
+            font-weight: 900;
+            font-size: 1.15em;
+            padding: 8px 24px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+            box-shadow: 0 0 20px rgba(255, 42, 109, 0.6);
+            animation: bannerPulse 0.9s infinite alternate ease-in-out;
+            text-align: center;
+        }
+        @keyframes bannerPulse {
+            0% { transform: scale(0.98); }
+            100% { transform: scale(1.02); }
+        }
+
+        /* 최종 시상식 포디움 그리드 */
+        .final-screen-content {
+            width: 100%;
+            max-width: 1100px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 0;
+            text-align: center;
+        }
+        .final-podium-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            width: 100%;
+            max-width: 980px;
+            margin: auto 0;
+        }
+        .podium-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 22px 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        .podium-card.rank-1 {
+            border-color: var(--yellow);
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.18), rgba(0, 0, 0, 0.45));
+            box-shadow: 0 0 28px rgba(255, 215, 0, 0.4);
+            transform: scale(1.05);
+        }
+        .podium-medal {
+            font-size: 2.4em;
+        }
+        .podium-rank-text {
+            font-size: 1.15em;
+            font-weight: 900;
+            color: var(--yellow);
+        }
+        .podium-team-title {
+            font-size: 1.5em;
+            font-weight: 900;
+            color: #fff;
+        }
+        .podium-score {
+            font-family: 'Fira Code', monospace;
+            font-size: 2em;
+            font-weight: 900;
+            color: var(--blue);
+        }
     </style>
 </head>
 <body>
@@ -1228,29 +1568,29 @@
         <section id="order-screen" class="screen-view">
             <div class="order-screen-content">
                 <div class="order-header">
-                    <h2 id="order-set-title">🎲 [제 1 / 6 게임] 출전 순서 랜덤 추첨</h2>
-                    <p id="order-set-topic" style="color: var(--yellow); font-size: 1.1em; font-weight: 800; margin-top: 4px;">
+                    <h2 id="order-set-title">🎲 [제 1 / 6 게임] 출전 순서 추첨</h2>
+                    <div id="order-set-topic" class="order-set-topic-badge">
                         주제: 애니 & 캐릭터 ⭐ 1단계 (20문제 릴레이)
-                    </p>
-                    <p style="color: #bbb; font-size: 0.88em; margin-top: 2px;">
-                        이번 게임에 출전하는 각 조의 대표 타자입니다. 룰렛을 돌려 1~4순위 순서를 결정하세요!
+                    </div>
+                    <p class="order-guide-text">
+                        이번 게임에 출전하는 4개 조의 대표 타자입니다! 네임 태그가 무작위로 섞여 순서가 결정됩니다.
                     </p>
                 </div>
 
-                <!-- 4개 조 대표 타자 카드 그리드 -->
-                <div class="order-batters-grid" id="order-batters-grid">
+                <!-- 4개 조 네임태그 슬롯 (1번~4번 순서 가로 배열) -->
+                <div class="order-slots-row" id="order-slots-row">
                     <!-- JS 렌더링 -->
                 </div>
 
                 <!-- 하단 액션 버튼 -->
                 <div class="order-action-area">
-                    <button class="act-btn act-btn-timer" id="order-shuffle-btn" onclick="startOrderShuffle()" style="font-size: 1.1em; padding: 12px 32px;">
-                        🎲 조 순서 랜덤 추첨 시작!
+                    <button class="order-btn-shuffle" id="order-shuffle-btn" onclick="startOrderShuffle()">
+                        🎲 순서 무작위 셔플
                     </button>
-                    <button class="btn-large-start" id="order-start-game-btn" onclick="startCurrentGameSet()" style="display: none; padding: 12px 36px;">
+                    <button class="order-btn-start" id="order-start-game-btn" onclick="startCurrentGameSet()" style="display: none;">
                         🚀 20문제 릴레이 게임 시작! ➡️
                     </button>
-                    <button class="act-btn act-btn-board" onclick="switchScreen('board-screen')">
+                    <button class="order-btn-back" onclick="switchScreen('board-screen')">
                         📋 카테고리 다시 고르기
                     </button>
                 </div>
@@ -5686,32 +6026,56 @@
             currentSetOrder = [0, 1, 2, 3];
             switchScreen('order-screen');
             renderOrderScreen();
+            // 화면 진입 시 자연스럽고 흥미진진하게 네임태그 무작위 셔플 자동 진행!
+            setTimeout(() => {
+                startOrderShuffle();
+            }, 300);
         }
 
         function renderOrderScreen() {
             if (!currentSetCategory) return;
-            document.getElementById('order-set-title').innerText = `🎲 [제 ${currentGameSet} / 6 게임] 출전 순서 랜덤 추첨`;
+            document.getElementById('order-set-title').innerText = `🎲 [제 ${currentGameSet} / 6 게임] 출전 순서 추첨`;
             document.getElementById('order-set-topic').innerText = `주제: ${currentSetCategory.name} ⭐ ${currentSetCategory.lvl}단계 (20문제 릴레이)`;
 
-            const grid = document.getElementById('order-batters-grid');
-            grid.innerHTML = '';
+            const slotsRow = document.getElementById('order-slots-row');
+            if (!slotsRow) return;
+            slotsRow.innerHTML = '';
 
-            const displayOrder = isOrderShuffled ? currentSetOrder : [0, 1, 2, 3];
+            const teamColors = ['#05d9e8', '#ff2a6d', '#ffd700', '#05f292'];
+            const teamBgGradients = [
+                'linear-gradient(145deg, rgba(5, 217, 232, 0.22), rgba(15, 20, 35, 0.95))',
+                'linear-gradient(145deg, rgba(255, 42, 109, 0.22), rgba(15, 20, 35, 0.95))',
+                'linear-gradient(145deg, rgba(255, 215, 0, 0.22), rgba(15, 20, 35, 0.95))',
+                'linear-gradient(145deg, rgba(5, 242, 146, 0.22), rgba(15, 20, 35, 0.95))'
+            ];
+            const rankLabels = ['1번 순서', '2번 순서', '3번 순서', '4번 순서'];
+            const rankBadges = ['🥇 1st', '🥈 2nd', '🥉 3rd', '🎖️ 4th'];
 
-            displayOrder.forEach((teamIdx, rankIdx) => {
+            currentSetOrder.forEach((teamIdx, slotIdx) => {
                 const batter = getBatterForTeam(teamIdx, currentGameSet);
-                const card = document.createElement('div');
-                card.className = `order-batter-card ${isOrderShuffled ? 'determined' : ''}`;
-                card.id = `batter-card-${teamIdx}`;
+                const color = teamColors[teamIdx];
+                const bg = teamBgGradients[teamIdx];
 
-                card.innerHTML = `
-                    ${isOrderShuffled ? `<div class="order-rank-badge">${rankIdx + 1}번 순번</div>` : ''}
-                    <div class="order-batter-team">${teamIdx + 1}조</div>
-                    <div class="order-batter-name">${batter.name}</div>
-                    <div class="order-batter-role">${batter.batterNum}번 타자</div>
-                    ${batter.isRepeat ? '<div class="order-repeat-tag">⭐ 1번 타자 재출전</div>' : ''}
+                const slot = document.createElement('div');
+                slot.className = `order-slot ${isOrderShuffled ? 'slot-determined' : ''}`;
+
+                slot.innerHTML = `
+                    <div class="slot-header-bar">
+                        <span class="slot-rank-title">${rankLabels[slotIdx]}</span>
+                        <span class="slot-rank-badge" style="background: rgba(255,255,255,0.08); color: ${color}; border: 1px solid ${color}66;">${rankBadges[slotIdx]}</span>
+                    </div>
+                    <div class="order-nametag ${isShuffling ? 'is-shuffling' : (isOrderShuffled ? 'is-settled' : '')}"
+                         style="border-color: ${color}; background: ${bg}; box-shadow: 0 10px 24px rgba(0,0,0,0.5), 0 0 16px ${color}33;">
+                        <div class="tag-pin">📌</div>
+                        <div class="tag-team-badge" style="background: ${color}; color: #000;">
+                            ${teamIdx + 1}조
+                        </div>
+                        <div class="tag-player-name">${batter.name}</div>
+                        <div class="tag-batter-role">${batter.batterNum}번 타자</div>
+                        ${batter.isRepeat ? '<div class="tag-repeat-pill">⭐ 1번 타자 재출전</div>' : ''}
+                    </div>
                 `;
-                grid.appendChild(card);
+                slotsRow.appendChild(slot);
             });
 
             const startBtn = document.getElementById('order-start-game-btn');
@@ -5719,10 +6083,10 @@
 
             if (isOrderShuffled) {
                 startBtn.style.display = 'inline-flex';
-                shuffleBtn.innerText = '🔄 순서 다시 추첨';
+                shuffleBtn.innerText = '🔄 순서 다시 섞기';
             } else {
-                startBtn.style.display = 'none';
-                shuffleBtn.innerText = '🎲 조 순서 랜덤 추첨 시작!';
+                startBtn.style.display = isShuffling ? 'none' : 'inline-flex';
+                shuffleBtn.innerText = '🎲 순서 무작위 셔플';
             }
         }
 
@@ -5732,11 +6096,11 @@
             if (isShuffling) return;
             isShuffling = true;
 
-            const cards = document.querySelectorAll('.order-batter-card');
-            cards.forEach(c => c.classList.add('shuffling'));
+            const startBtn = document.getElementById('order-start-game-btn');
+            if (startBtn) startBtn.style.display = 'none';
 
             let count = 0;
-            const maxTicks = 16;
+            const maxTicks = 14;
             const interval = setInterval(() => {
                 playSound('tick');
                 currentSetOrder = [0, 1, 2, 3].sort(() => Math.random() - 0.5);
@@ -5750,7 +6114,7 @@
                     playSound('fanfare');
                     renderOrderScreen();
                 }
-            }, 90);
+            }, 80);
         }
 
         // 추첨 완료 후 게임 시작 버튼 클릭 -> [퀴즈 화면]으로 이동
