@@ -1899,7 +1899,11 @@
             teamMembers = getDefaultTeamMembers();
             saveTeamStorage();
         }
-        let teamScores = [0, 0, 0, 0];
+        let teamScores = JSON.parse(localStorage.getItem('ssafy_team_scores_v9')) || [0, 0, 0, 0];
+
+        function saveScoreStorage() {
+            localStorage.setItem('ssafy_team_scores_v9', JSON.stringify(teamScores));
+        }
 
         let currentTurn = {
             teamIdx: 0,
@@ -2238,6 +2242,7 @@
 
         function adjustScore(teamIdx, delta) {
             teamScores[teamIdx] = Math.max(0, teamScores[teamIdx] + delta);
+            saveScoreStorage();
             renderScoreboard();
         }
 
@@ -5892,12 +5897,13 @@
 
         // 보드판: 5개 카테고리 컬럼 × 각 컬럼에 1단계, 2단계, 3단계(각 20문제 라운드) 카드 3장
         function renderBoard() {
-            // 완료된 라운드 수를 기반으로 currentGameSet 자동 동기화 (1게임 완료 시 즉시 2/6, 2게임 완료 시 3/6...)
+            // 완료된 라운드 수를 기반으로 currentGameSet 자동 동기화 (0개 완료 시 1/6, 1개 완료 시 2/6...)
             const completedRounds = Object.keys(roundStatus).filter(k => roundStatus[k]).length;
-            if (completedRounds > 0) {
-                currentGameSet = Math.min(6, completedRounds + 1);
-                saveGameState();
+            currentGameSet = completedRounds > 0 ? Math.min(6, completedRounds + 1) : 1;
+            if (completedRounds === 0) {
+                lastSolverInfo = null;
             }
+            saveGameState();
 
             // 상단 안내 배너 갱신
             const bannerEl = document.getElementById('board-set-banner');
@@ -5965,10 +5971,16 @@
         }
 
         function resetAllSolved() {
-            if (confirm("정말 모든 단계의 완주 상태(❌표)와 문제 해결 기록을 초기화하시겠습니까?")) {
+            if (confirm("정말 모든 단계의 완주 상태(❌표), 진행 바퀴수(1/6 게임), 점수를 초기화하시겠습니까?")) {
                 solvedStatus = {};
                 roundStatus = {};
+                currentGameSet = 1;
+                lastSolverInfo = null;
+                teamScores = [0, 0, 0, 0];
                 saveQuizStorage();
+                saveScoreStorage();
+                saveGameState();
+                renderScoreboard();
                 renderBoard();
             }
         }
@@ -6316,6 +6328,7 @@
 
             // 점수 추가
             teamScores[curTeamIdx] += finalEarnedPoints;
+            saveScoreStorage();
             renderScoreboard();
 
             // 세트 마지막 문제 해결자 정보 업데이트 (다음 세트 주제 선택권)
@@ -6568,6 +6581,7 @@
                 solvedStatus = {};
                 roundStatus = {};
                 saveQuizStorage();
+                saveScoreStorage();
                 saveTeamStorage();
                 saveGameState();
                 switchScreen('rule-screen');
