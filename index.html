@@ -146,6 +146,37 @@
             color: var(--blue);
             min-width: 32px;
             text-align: right;
+            cursor: pointer;
+            padding: 1px 4px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .team-score:hover {
+            background: rgba(5, 217, 232, 0.2);
+            color: #fff;
+            outline: 1.5px dashed var(--blue);
+        }
+        .team-score-input {
+            width: 52px;
+            height: 24px;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.1em;
+            font-weight: 900;
+            color: #fff;
+            background: rgba(15, 20, 35, 0.95);
+            border: 2px solid var(--yellow);
+            border-radius: 4px;
+            text-align: right;
+            padding: 0 4px;
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            -moz-appearance: textfield;
+        }
+        .team-score-input::-webkit-outer-spin-button,
+        .team-score-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
         .score-ctrls {
             display: flex;
@@ -2217,6 +2248,7 @@
         /* ================= 4. 상단 스코어보드 & 턴 관리 ================= */
         function renderScoreboard() {
             const board = document.getElementById('scoreboard');
+            if (!board) return;
             board.innerHTML = '';
 
             for (let i = 0; i < 4; i++) {
@@ -2225,10 +2257,10 @@
 
                 card.innerHTML = `
                     <span class="team-name">${i + 1}조</span>
-                    <span class="team-score">${teamScores[i]}</span>
+                    <span class="team-score" onclick="editTeamScore(${i}, this)" title="클릭하여 점수 직접 입력 (커서 활성화)">${teamScores[i]}</span>
                     <div class="score-ctrls">
-                        <button class="score-ctrl-btn" onclick="adjustScore(${i}, 10)">▲</button>
-                        <button class="score-ctrl-btn" onclick="adjustScore(${i}, -10)">▼</button>
+                        <button class="score-ctrl-btn" onclick="adjustScore(${i}, 10)" title="+10점">▲</button>
+                        <button class="score-ctrl-btn" onclick="adjustScore(${i}, -10)" title="-10점">▼</button>
                     </div>
                 `;
                 board.appendChild(card);
@@ -2238,6 +2270,48 @@
             const ch = getCurrentChallengerInfo();
             const turnNameEl = document.getElementById('board-turn-name');
             if (turnNameEl) turnNameEl.innerText = ch.label;
+        }
+
+        // 클릭 시 점수를 직접 입력할 수 있는 커서 및 인풋 활성화
+        function editTeamScore(teamIdx, el) {
+            if (el.tagName === 'INPUT') return;
+            const currentScore = teamScores[teamIdx];
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'team-score-input';
+            input.value = currentScore;
+            input.min = '0';
+            input.max = '9999';
+            input.title = "원하는 점수를 입력하고 Enter 또는 바깥을 클릭하세요";
+
+            let isCommitted = false;
+            const commit = () => {
+                if (isCommitted) return;
+                isCommitted = true;
+                const val = parseInt(input.value, 10);
+                teamScores[teamIdx] = isNaN(val) ? currentScore : Math.max(0, val);
+                saveScoreStorage();
+                renderScoreboard();
+            };
+
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commit();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    isCommitted = true;
+                    renderScoreboard();
+                }
+            };
+
+            input.onblur = () => {
+                commit();
+            };
+
+            el.replaceWith(input);
+            input.focus();
+            input.select();
         }
 
         function adjustScore(teamIdx, delta) {
@@ -6690,6 +6764,7 @@
 
         /* ================= 9. MC 전용 단축키 ================= */
         window.addEventListener('keydown', (e) => {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
             if (document.getElementById('bulk-names-modal').style.display === 'flex' ||
                 document.getElementById('quiz-edit-modal').style.display === 'flex') return;
 
