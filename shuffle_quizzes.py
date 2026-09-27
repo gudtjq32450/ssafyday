@@ -116,19 +116,19 @@ def shuffle_quizzes():
         raise ValueError("createInitialQuizzes 정규식 치환 실패")
     print(">>> index.html createInitialQuizzes() 코드 치환 성공!")
 
-    # 2. LocalStorage 버전 v9 -> v10으로 승격 (브라우저가 무조건 새 데이터를 읽도록)
-    v9_keys = [
-        "ssafy_quiz_list_v9",
-        "ssafy_solved_status_v9",
-        "ssafy_round_status_v9",
-        "ssafy_team_scores_v9",
-        "ssafy_game_set_v9",
-        "ssafy_last_solver_v9"
+    # 2. LocalStorage 버전 v14 -> v15로 승격 (브라우저가 무조건 새 데이터를 읽도록)
+    v14_keys = [
+        "ssafy_quiz_list_v14",
+        "ssafy_solved_status_v14",
+        "ssafy_round_status_v14",
+        "ssafy_team_scores_v14",
+        "ssafy_game_set_v14",
+        "ssafy_last_solver_v14"
     ]
-    for k in v9_keys:
-        k_new = k.replace("_v9", "_v10")
+    for k in v14_keys:
+        k_new = k.replace("_v14", "_v15")
         html = html.replace(k, k_new)
-    print(">>> LocalStorage 버전을 v9 -> v10으로 승격 완료 (캐시 무효화)")
+    print(">>> LocalStorage 버전을 v14 -> v15로 승격 완료 (캐시 무효화)")
 
     # 3. index.html 저장
     with open(HTML_PATH, "w", encoding="utf-8") as f:
