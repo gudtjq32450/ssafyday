@@ -1020,6 +1020,9 @@
             align-items: center;
             justify-content: center;
         }
+        .modal-overlay.active {
+            display: flex !important;
+        }
         .modal-box {
             background: #1c1c34;
             border: 2px solid var(--border-color);
@@ -5889,6 +5892,13 @@
 
         // 보드판: 5개 카테고리 컬럼 × 각 컬럼에 1단계, 2단계, 3단계(각 20문제 라운드) 카드 3장
         function renderBoard() {
+            // 완료된 라운드 수를 기반으로 currentGameSet 자동 동기화 (1게임 완료 시 즉시 2/6, 2게임 완료 시 3/6...)
+            const completedRounds = Object.keys(roundStatus).filter(k => roundStatus[k]).length;
+            if (completedRounds > 0) {
+                currentGameSet = Math.min(6, completedRounds + 1);
+                saveGameState();
+            }
+
             // 상단 안내 배너 갱신
             const bannerEl = document.getElementById('board-set-banner');
             if (bannerEl) {
@@ -6439,23 +6449,29 @@
         // 한 게임 세트(20문제) 완료 처리
         function completeGameSet() {
             playSound('fanfare');
-            roundStatus[currentRoundKey] = true;
+            if (currentRoundKey) {
+                roundStatus[currentRoundKey] = true;
+            }
             saveQuizStorage();
+
+            const finishedSetNum = currentGameSet;
+            const completedRounds = Object.keys(roundStatus).filter(k => roundStatus[k]).length;
+            currentGameSet = Math.min(6, completedRounds + 1);
+            saveGameState();
 
             const modal = document.getElementById('set-complete-modal');
             const title = document.getElementById('set-complete-title');
             const msg = document.getElementById('set-complete-msg');
             const btn = document.getElementById('set-complete-btn');
 
-            if (currentGameSet < 6) {
-                title.innerText = `🎉 [제 ${currentGameSet} 게임 (20문제) 완주!]`;
+            if (completedRounds < 6) {
+                title.innerText = `🎉 [제 ${finishedSetNum} 게임 (20문제) 완주!]`;
                 const solverName = lastSolverInfo ? `${lastSolverInfo.teamName} ${lastSolverInfo.memberName}` : "마지막 도전자";
-                msg.innerHTML = `20문제를 모두 마쳤습니다!<br><br>마지막 20번 문제를 해결한 <b>[${solverName}]</b> 님이<br>다음 게임(제 ${currentGameSet + 1} 게임)의 주제와 난이도를 선택합니다!`;
-                btn.innerText = `🎯 제 ${currentGameSet + 1} 게임 주제 선택하러 가기 ➡️`;
+                msg.innerHTML = `20문제를 모두 마쳤습니다!<br><br>마지막 20번 문제를 해결한 <b>[${solverName}]</b> 님이<br>다음 게임(제 ${currentGameSet} / 6 게임)의 주제와 난이도를 선택합니다!`;
+                btn.innerText = `🎯 제 ${currentGameSet} 게임 주제 선택하러 가기 ➡️`;
                 btn.onclick = () => {
+                    modal.style.display = 'none';
                     modal.classList.remove('active');
-                    currentGameSet++;
-                    saveGameState();
                     switchScreen('board-screen');
                     renderBoard();
                 };
@@ -6464,12 +6480,14 @@
                 msg.innerHTML = `싸피데이 6개 세트 대항전이 모두 종료되었습니다!<br><br>영광의 최종 우승팀 시상식으로 이동합니다!`;
                 btn.innerText = `👑 최종 우승팀 발표 & 시상식 보기 🏆`;
                 btn.onclick = () => {
+                    modal.style.display = 'none';
                     modal.classList.remove('active');
                     switchScreen('final-screen');
                     renderFinalScreen();
                 };
             }
 
+            modal.style.display = 'flex';
             modal.classList.add('active');
         }
 
