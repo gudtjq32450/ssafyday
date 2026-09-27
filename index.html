@@ -6145,6 +6145,8 @@
         let nextQuestionCountdownTimer = null;
         let countdownInterval = null;
         let countdownSec = 3;
+        let currentQuestionFailCount = 0; // 이번 문제에서 발생한 오답 횟수 (0~4)
+        const TOSS_BONUS_POINTS = 2; // 틀릴 때마다 얹어주는 가점 (+2점씩)
 
         function loadSetQuestion() {
             if (currentQuizIdx >= currentSetQuizzes.length || currentQuizIdx >= 20) {
@@ -6153,6 +6155,7 @@
             }
 
             clearCountdown();
+            currentQuestionFailCount = 0;
             currentActiveQuiz = currentSetQuizzes[currentQuizIdx];
 
             // 1. [핵심] 가림막 0ms 즉각 덮기 & 사진 은폐 (렉/미리보기 완벽 차단)
@@ -6307,8 +6310,12 @@
             const curTeamIdx = currentSetOrder[currentOrderIdx];
             const batter = getBatterForTeam(curTeamIdx, currentGameSet);
 
+            // 가점 계산: 기본 점수 + (오답 횟수 × 2점)
+            const addedBonus = currentQuestionFailCount * TOSS_BONUS_POINTS;
+            const finalEarnedPoints = currentSetCategory.points + addedBonus;
+
             // 점수 추가
-            teamScores[curTeamIdx] += currentSetCategory.points;
+            teamScores[curTeamIdx] += finalEarnedPoints;
             renderScoreboard();
 
             // 세트 마지막 문제 해결자 정보 업데이트 (다음 세트 주제 선택권)
@@ -6327,11 +6334,11 @@
             document.getElementById('toss-alert-banner').style.display = 'none';
 
             // 3초 카운트다운 시작
-            startNextQuestionCountdown();
+            startNextQuestionCountdown(finalEarnedPoints, addedBonus);
         }
 
         // 3초 카운트다운 타이머 (3초 뒤 자동 넘김, 스페이스바 누르면 즉시 넘김)
-        function startNextQuestionCountdown() {
+        function startNextQuestionCountdown(earnedPts, bonusPts) {
             clearCountdown();
             countdownSec = 3;
 
@@ -6340,7 +6347,14 @@
 
             function updateCountdownUI() {
                 if (btn) btn.innerText = `⏭️ 다음 문제로 (${countdownSec}초) [Space 즉시 넘기기]`;
-                if (hintText) hintText.innerHTML = `⭕ <span style="color: var(--yellow); font-weight: 900;">정답 인정!</span> (${countdownSec}초 후 다음 문제로 자동 이동 / Space로 즉시 넘김)`;
+                if (hintText) {
+                    if (earnedPts) {
+                        const bonusTxt = bonusPts > 0 ? ` <span style="color: var(--green); font-weight: 800;">(+${bonusPts}점 가점 획득!)</span>` : '';
+                        hintText.innerHTML = `⭕ <span style="color: var(--yellow); font-weight: 900;">정답 인정! [${earnedPts}점 획득${bonusTxt}]</span> (${countdownSec}초 후 다음 문제 / Space 즉시 넘김)`;
+                    } else {
+                        hintText.innerHTML = `❌ <span style="color: var(--pink); font-weight: 900;">4개 조 전원 오답!</span> (${countdownSec}초 후 다음 문제로 자동 이동 / Space 즉시 넘김)`;
+                    }
+                }
             }
 
             updateCountdownUI();
@@ -6401,13 +6415,31 @@
             }
         }
 
-        // ❌ 땡! 오답 처리 (X키) -> 문제는 유지한 채 바로 다음 순번 조에게 기회 토스!
+        // ❌ 땡! 오답 처리 (X키) -> 오답마다 +2점 가점 누적, 4개 조 전원 오답 시 정답 공개 후 다음 문제로!
         function handleWrong() {
             if (isAnswerRevealed) return; // 이미 정답이 공개된 상태에서는 땡 무시
 
+            currentQuestionFailCount++;
+
+            // [핵심 룰] 4개 조가 모두 틀린 경우 (한 바퀴 전원 실패)
+            if (currentQuestionFailCount >= 4) {
+                playSound('wrong');
+                revealAnswer();
+
+                const tossBanner = document.getElementById('toss-alert-banner');
+                if (tossBanner) {
+                    tossBanner.innerHTML = `💥 <b>4개 조 전원 오답!</b> (정답 확인 후 다음 문제로 넘어갑니다)`;
+                    tossBanner.style.display = 'block';
+                }
+
+                startNextQuestionCountdown();
+                return;
+            }
+
+            // 아직 기회가 남은 경우: 다음 조로 토스 & 가점 부여
             playSound('wrong');
 
-            // 문제는 그대로 유지! 다음 조로 순번만 토스
+            // 다음 조로 순번 토스
             currentOrderIdx = (currentOrderIdx + 1) % 4;
             const nextTeamIdx = currentSetOrder[currentOrderIdx];
             const nextBatter = getBatterForTeam(nextTeamIdx, currentGameSet);
@@ -6417,12 +6449,19 @@
             const label = `${nextTeamIdx + 1}조 [${nextBatter.name}]`;
             document.getElementById('q-challenger-tag').innerText = `🎯 ${label} 차례!`;
 
-            // 토스 알림 배너 표시
+            // 현재 가점 계산 (+2점씩)
+            const addedBonus = currentQuestionFailCount * TOSS_BONUS_POINTS;
+            const totalPointsNow = currentSetCategory.points + addedBonus;
+
+            // 상단 점수 태그에 가점 표시
+            document.getElementById('q-pts-tag').innerHTML = `💎 <b>${totalPointsNow}점</b> <span style="font-size: 0.85em; color: var(--yellow);">(+${addedBonus}점 가점!)</span>`;
+
+            // 토스 알림 배너 표시 (가점 및 다음 도전자 강조)
             const tossBanner = document.getElementById('toss-alert-banner');
-            tossBanner.innerText = `⚡ 땡! ➔ 기회 토스: [${nextTeamIdx + 1}조 ${nextBatter.name}] (하나, 둘, 셋!)`;
+            tossBanner.innerHTML = `⚡ 땡! ➔ 기회 토스: <b>[${nextTeamIdx + 1}조 ${nextBatter.name}]</b> <span style="color: var(--yellow); font-weight: 900;">(+${addedBonus}점 가점: 총 ${totalPointsNow}점 찬스!)</span> (하나, 둘, 셋!)`;
             tossBanner.style.display = 'block';
 
-            // 사진은 계속 공개 상태 유지 (가림막 안 덮음)
+            // 사진은 계속 공개 상태 유지
             const curtain = document.getElementById('photo-curtain');
             if (curtain) curtain.classList.add('revealed');
             const img = document.getElementById('quiz-photo-img');
