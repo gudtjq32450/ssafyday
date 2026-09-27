@@ -3828,9 +3828,9 @@
                 "qNum": 3,
                 "roundKey": "music_l1",
                 "points": 10,
-                "answer": "르세라핌",
-                "hint": "EASY, 안티프래자일, 2030 헬스·운동 자극을 주는 당당한 퍼포먼스",
-                "imageUrl": "images/가수_1단계/르세라핌.jpg"
+                "answer": "이승철",
+                "hint": "라이브의 황제, '희야', 'Never Ending Story', 슈퍼스타K 독설 심사위원",
+                "imageUrl": "images/가수_1단계/이승철.jpg"
         },
         {
                 "id": "music_l1_q4",
@@ -3876,9 +3876,9 @@
                 "qNum": 7,
                 "roundKey": "music_l1",
                 "points": 10,
-                "answer": "아이브 (IVE)",
-                "hint": "러브다이브, 아이엠, 자기애 넘치는 가사와 트렌디한 비주얼",
-                "imageUrl": "images/가수_1단계/아이브 (IVE).jpg"
+                "answer": "조승연(우즈)",
+                "hint": "가수 & 아이돌 1단계, 올라운더 아티스트 WOODZ, 'Drowning' 역주행",
+                "imageUrl": "images/가수_1단계/조승연(wooz 우즈).jpg"
         },
         {
                 "id": "music_l1_q8",
@@ -5959,9 +5959,31 @@
 ];
         }
 
-                        let quizList = JSON.parse(localStorage.getItem('ssafy_quiz_list_v9')) || createInitialQuizzes();
+        let quizList = JSON.parse(localStorage.getItem('ssafy_quiz_list_v9')) || createInitialQuizzes();
         let solvedStatus = JSON.parse(localStorage.getItem('ssafy_solved_status_v9')) || {};
         let roundStatus = JSON.parse(localStorage.getItem('ssafy_round_status_v9')) || {}; // 각 단계 완주 여부
+
+        // 가수 1단계 최신 이미지/정답 즉시 동기화 (르세라핌 -> 이승철, 아이브 -> 조승연)
+        (function syncMusicL1Quizzes() {
+            let changed = false;
+            const q3 = quizList.find(q => q.id === 'music_l1_q3');
+            if (q3 && (q3.answer === '르세라핌' || (q3.imageUrl && q3.imageUrl.includes('르세라핌.jpg')))) {
+                q3.answer = '이승철';
+                q3.hint = "라이브의 황제, '희야', 'Never Ending Story', 슈퍼스타K 독설 심사위원";
+                q3.imageUrl = "images/가수_1단계/이승철.jpg";
+                changed = true;
+            }
+            const q7 = quizList.find(q => q.id === 'music_l1_q7');
+            if (q7 && (q7.answer.includes('아이브') || (q7.imageUrl && q7.imageUrl.includes('아이브')))) {
+                q7.answer = '조승연(우즈)';
+                q7.hint = "가수 & 아이돌 1단계, 올라운더 아티스트 WOODZ, 'Drowning' 역주행";
+                q7.imageUrl = "images/가수_1단계/조승연(wooz 우즈).jpg";
+                changed = true;
+            }
+            if (changed) {
+                localStorage.setItem('ssafy_quiz_list_v9', JSON.stringify(quizList));
+            }
+        })();
 
         function saveQuizStorage() {
             localStorage.setItem('ssafy_quiz_list_v9', JSON.stringify(quizList));
