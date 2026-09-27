@@ -818,29 +818,31 @@
             cursor: pointer;
         }
 
-        /* 사진 가림막 (스페이스바 누르기 전 가림 상태 - "~~ 차례!") */
+        /* 사진 가림막 (스페이스바 누르기 전 가림 상태 - 렉/미리보기 완벽 차단) */
         .photo-curtain {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(18, 18, 32, 0.96);
-            backdrop-filter: blur(8px);
-            z-index: 15;
+            background: #0b0e1b !important; /* 100% 완전 불투명 암실 배경 - 찰나의 순간에도 사진 투과 절대 불가 */
+            z-index: 30; /* 이미지 및 모든 내부 요소보다 무조건 최상단 */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            transition: all 0.25s ease;
+            transition: none !important; /* 가림막 덮일 때는 0ms 즉시 차단 (페이드 딜레이로 인한 잔상 유출 100% 방지) */
+            opacity: 1 !important;
+            pointer-events: auto;
             cursor: pointer;
             text-align: center;
             padding: 20px;
         }
         .photo-curtain.revealed {
-            opacity: 0;
+            opacity: 0 !important;
             pointer-events: none;
+            transition: opacity 0.16s ease-out !important; /* 열릴 때만 자연스럽게 페이드아웃 */
         }
         .curtain-icon {
             font-size: 3em;
@@ -1655,11 +1657,10 @@
                     <div class="ans-hint" id="ans-hint-text">스페이스바를 한 번 더 누르면 정답이 공개됩니다</div>
                 </div>
 
-                <!-- 하단 컨트롤 바 -->
+                <!-- 하단 컨트롤 바 (스페이스바 중심 스피디 컨트롤) -->
                 <div class="action-controls-bar">
-                    <button class="act-btn act-btn-timer" id="btn-toggle-photo" onclick="togglePhotoCurtain()">👀 사진 공개 [Space]</button>
-                    <button class="act-btn act-btn-correct" onclick="handleCorrect()">⭕ 정답! [다음 문제로] [O]</button>
-                    <button class="act-btn act-btn-wrong" onclick="handleWrong()">❌ 땡! [다음 조 토스] [X]</button>
+                    <button class="act-btn act-btn-timer" id="btn-toggle-photo" onclick="togglePhotoCurtain()" style="font-size: 1.05em; padding: 10px 24px;">👀 사진 공개 [Space]</button>
+                    <button class="act-btn act-btn-wrong" onclick="handleWrong()" style="font-size: 1.05em; padding: 10px 22px;">❌ 땡! 다음 조 토스 [X]</button>
                     <button class="act-btn act-btn-board" onclick="skipQuestion()">⏭️ 문제 패스 [→]</button>
                     <button class="act-btn act-btn-board" onclick="switchScreen('board-screen')">📋 카테고리판 [Esc]</button>
                 </div>
@@ -6131,15 +6132,32 @@
         }
 
         // 이번 게임의 개별 문제 로드
+        let nextQuestionCountdownTimer = null;
+        let countdownInterval = null;
+        let countdownSec = 3;
+
         function loadSetQuestion() {
             if (currentQuizIdx >= currentSetQuizzes.length || currentQuizIdx >= 20) {
                 completeGameSet();
                 return;
             }
 
+            clearCountdown();
             currentActiveQuiz = currentSetQuizzes[currentQuizIdx];
 
-            // 상단 뱃지 갱신
+            // 1. [핵심] 가림막 0ms 즉각 덮기 & 사진 은폐 (렉/미리보기 완벽 차단)
+            const curtainEl = document.getElementById('photo-curtain');
+            if (curtainEl) curtainEl.classList.remove('revealed');
+            isPhotoRevealed = false;
+
+            const img = document.getElementById('quiz-photo-img');
+            if (img) {
+                img.style.display = 'none';
+                img.style.visibility = 'hidden';
+                img.src = ''; // 이전 사진 잔상 완벽 소거
+            }
+
+            // 2. 상단 뱃지 갱신
             document.getElementById('q-game-tag').innerText = `제 ${currentGameSet}/6 게임`;
             document.getElementById('q-cat-tag').innerText = `${currentSetCategory.name} [Q.${currentQuizIdx + 1}/20]`;
             document.getElementById('q-level-tag').innerText = `⭐ ${currentSetCategory.lvl}단계`;
@@ -6148,34 +6166,29 @@
             // 상단 조 순서 체인 바 갱신
             renderOrderChainBar();
 
-            // 현재 도전자 정보
+            // 3. 현재 도전자 정보
             const curTeamIdx = currentSetOrder[currentOrderIdx];
             const batter = getBatterForTeam(curTeamIdx, currentGameSet);
             const label = `${curTeamIdx + 1}조 [${batter.name}]`;
 
             document.getElementById('q-challenger-tag').innerText = `🎯 ${label} 차례!`;
-
-            // 사진 가림막 세팅
-            const curtainEl = document.getElementById('photo-curtain');
             const curtainText = document.getElementById('curtain-challenger-text');
             if (curtainText) curtainText.innerText = `🎯 ${label} 차례!`;
 
-            curtainEl.classList.remove('revealed');
-            isPhotoRevealed = false;
             document.getElementById('btn-toggle-photo').innerText = "👀 사진 공개 [Space]";
 
             // 토스 배너 숨김
             document.getElementById('toss-alert-banner').style.display = 'none';
 
-            // 사진 업데이트
+            // 4. 사진 백그라운드 프리로드 (가림막 아래에서만 대기)
             updatePhotoDisplay();
 
-            // 정답 박스 초기화
+            // 5. 정답 박스 초기화
             isAnswerRevealed = false;
             const ansBox = document.getElementById('answer-box');
             ansBox.classList.remove('revealed');
             document.getElementById('ans-name-text').innerText = "???";
-            document.getElementById('ans-hint-text').innerText = "스페이스바를 한 번 더 누르면 정답이 공개됩니다";
+            document.getElementById('ans-hint-text').innerText = "스페이스바 1번: 사진 공개 | 스페이스바 2번: 정답 공개 & 3초 후 다음 문제";
         }
 
         // 퀴즈 화면 상단 조 순서 체인 바 렌더링
@@ -6186,7 +6199,7 @@
             currentSetOrder.forEach((teamIdx, idx) => {
                 const batter = getBatterForTeam(teamIdx, currentGameSet);
                 const chip = document.createElement('div');
-                chip.className = `chain-team-chip ${idx === currentOrderIdx ? 'active' : ''}`;
+                chip.className = `chain-step ${idx === currentOrderIdx ? 'current' : ''}`;
                 chip.innerHTML = `<b>${teamIdx + 1}조</b> ${batter.name}`;
                 container.appendChild(chip);
 
@@ -6199,58 +6212,75 @@
             });
         }
 
-        // 사진 가림막 열기 / 정답 확인 토글
+        // 사진 가림막 열기 / 정답 확인 토글 (스페이스바 하나로 스피디하게 완결!)
         function togglePhotoCurtain() {
-            const curtain = document.getElementById('photo-curtain');
             if (!isPhotoRevealed) {
-                curtain.classList.add('revealed');
+                // [스페이스바 1번]: 사진 공개! (구두 카운트다운 "하나, 둘, 셋!")
+                const curtain = document.getElementById('photo-curtain');
+                const img = document.getElementById('quiz-photo-img');
+                if (img) {
+                    img.style.display = 'block';
+                    img.style.visibility = 'visible';
+                }
+                if (curtain) curtain.classList.add('revealed');
                 isPhotoRevealed = true;
                 playSound('tick');
-                document.getElementById('btn-toggle-photo').innerText = "👀 정답 확인 [Space]";
+                document.getElementById('btn-toggle-photo').innerText = "⭕ 정답 확인 [Space 한번 더]";
+            } else if (!isAnswerRevealed) {
+                // [스페이스바 2번]: 정답 공개 + 맞춤 인정(점수 획득) + 3초 후 자동 다음 문제!
+                handleCorrect();
             } else {
-                revealAnswer();
+                // [스페이스바 3번 또는 3초 카운트다운 도중 스페이스]: 3초 기다리지 않고 즉시 다음 문제로 스킵!
+                skipCountdownAndAdvance();
             }
         }
 
         function updatePhotoDisplay() {
             const img = document.getElementById('quiz-photo-img');
             const placeholder = document.getElementById('photo-empty-ph');
-            if (!currentActiveQuiz) return;
+            if (!currentActiveQuiz || !img) return;
 
-            if (currentActiveQuiz.imageUrl) {
-                img.src = encodeURI(currentActiveQuiz.imageUrl);
-                img.onload = () => {
+            // 가림막이 열려있지 않은 상태에서는 이미지를 화면에 절대 보이지 않게 감춤
+            if (!isPhotoRevealed) {
+                img.style.display = 'none';
+                img.style.visibility = 'hidden';
+            }
+
+            const targetUrl = currentActiveQuiz.imageUrl ? encodeURI(currentActiveQuiz.imageUrl) : `images/${currentActiveQuiz.id}.jpg`;
+            img.src = targetUrl;
+
+            img.onload = () => {
+                if (placeholder) placeholder.style.display = 'none';
+                if (isPhotoRevealed) {
                     img.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
-                img.onerror = () => {
+                    img.style.visibility = 'visible';
+                }
+            };
+            img.onerror = () => {
+                if (!currentActiveQuiz.imageUrl) {
+                    img.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'flex';
+                } else {
                     img.src = `images/${currentActiveQuiz.id}.jpg`;
                     img.onload = () => {
-                        img.style.display = 'block';
-                        placeholder.style.display = 'none';
+                        if (placeholder) placeholder.style.display = 'none';
+                        if (isPhotoRevealed) {
+                            img.style.display = 'block';
+                            img.style.visibility = 'visible';
+                        }
                     };
                     img.onerror = () => {
                         img.style.display = 'none';
-                        placeholder.style.display = 'flex';
+                        if (placeholder) placeholder.style.display = 'flex';
                     };
-                };
-            } else {
-                img.src = `images/${currentActiveQuiz.id}.jpg`;
-                img.onload = () => {
-                    img.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
-                img.onerror = () => {
-                    img.style.display = 'none';
-                    placeholder.style.display = 'flex';
-                };
-            }
+                }
+            };
         }
 
         function revealAnswer() {
             isAnswerRevealed = true;
             const ansBox = document.getElementById('answer-box');
-            ansBox.classList.add('revealed');
+            if (ansBox) ansBox.classList.add('revealed');
 
             const ans = currentActiveQuiz.answer || "(정답 미입력 - 문제 수정을 눌러주세요)";
             const hint = currentActiveQuiz.hint ? `[힌트: ${currentActiveQuiz.hint}]` : "";
@@ -6259,9 +6289,9 @@
             document.getElementById('ans-hint-text').innerText = hint;
         }
 
-        // ⭕ 정답 처리 (O) -> 점수 획득 + 마지막 해결자 기록 + 다음 문제 & 다음 순번 조로 릴레이
+        // ⭕ 정답 처리 (스페이스바 2번째 누름 또는 O키) -> 점수 획득 + 마지막 해결자 기록 + 3초 카운트다운 후 다음 문제
         function handleCorrect() {
-            if (!currentActiveQuiz) return;
+            if (!currentActiveQuiz || isAnswerRevealed) return;
             playSound('correct');
 
             const curTeamIdx = currentSetOrder[currentOrderIdx];
@@ -6286,21 +6316,85 @@
             // 토스 배너 숨김
             document.getElementById('toss-alert-banner').style.display = 'none';
 
-            // 다음 문제로 이동 (0.7초 후)
-            setTimeout(() => {
-                currentQuizIdx++;
-                currentOrderIdx = (currentOrderIdx + 1) % 4; // 다음 문제는 다음 조부터 시작
-
-                if (currentQuizIdx >= 20 || currentQuizIdx >= currentSetQuizzes.length) {
-                    completeGameSet();
-                } else {
-                    loadSetQuestion();
-                }
-            }, 700);
+            // 3초 카운트다운 시작
+            startNextQuestionCountdown();
         }
 
-        // ❌ 땡! 오답 처리 (X) -> 문제는 유지한 채 바로 다음 순번 조에게 기회 토스!
+        // 3초 카운트다운 타이머 (3초 뒤 자동 넘김, 스페이스바 누르면 즉시 넘김)
+        function startNextQuestionCountdown() {
+            clearCountdown();
+            countdownSec = 3;
+
+            const btn = document.getElementById('btn-toggle-photo');
+            const hintText = document.getElementById('ans-hint-text');
+
+            function updateCountdownUI() {
+                if (btn) btn.innerText = `⏭️ 다음 문제로 (${countdownSec}초) [Space 즉시 넘기기]`;
+                if (hintText) hintText.innerHTML = `⭕ <span style="color: var(--yellow); font-weight: 900;">정답 인정!</span> (${countdownSec}초 후 다음 문제로 자동 이동 / Space로 즉시 넘김)`;
+            }
+
+            updateCountdownUI();
+
+            countdownInterval = setInterval(() => {
+                countdownSec--;
+                if (countdownSec > 0) {
+                    updateCountdownUI();
+                } else {
+                    clearCountdown();
+                    advanceToNextQuestion();
+                }
+            }, 1000);
+        }
+
+        function clearCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            if (nextQuestionCountdownTimer) {
+                clearTimeout(nextQuestionCountdownTimer);
+                nextQuestionCountdownTimer = null;
+            }
+        }
+
+        function skipCountdownAndAdvance() {
+            clearCountdown();
+            advanceToNextQuestion();
+        }
+
+        // 다음 문제로 안전하게 전환 (가림막과 이미지 완벽 초기화)
+        function advanceToNextQuestion() {
+            clearCountdown();
+
+            // 1. [잔상 및 렉 노출 완전 차단] 가림막 즉시 덮고 사진 이미지 완전 은폐
+            const curtain = document.getElementById('photo-curtain');
+            if (curtain) {
+                curtain.classList.remove('revealed');
+            }
+            isPhotoRevealed = false;
+
+            const img = document.getElementById('quiz-photo-img');
+            if (img) {
+                img.style.display = 'none';
+                img.style.visibility = 'hidden';
+                img.src = '';
+            }
+
+            // 2. 인덱스 증가 및 다음 조로 기본 순번 회전
+            currentQuizIdx++;
+            currentOrderIdx = (currentOrderIdx + 1) % 4;
+
+            if (currentQuizIdx >= 20 || currentQuizIdx >= currentSetQuizzes.length) {
+                completeGameSet();
+            } else {
+                loadSetQuestion();
+            }
+        }
+
+        // ❌ 땡! 오답 처리 (X키) -> 문제는 유지한 채 바로 다음 순번 조에게 기회 토스!
         function handleWrong() {
+            if (isAnswerRevealed) return; // 이미 정답이 공개된 상태에서는 땡 무시
+
             playSound('wrong');
 
             // 문제는 그대로 유지! 다음 조로 순번만 토스
@@ -6318,24 +6412,28 @@
             tossBanner.innerText = `⚡ 땡! ➔ 기회 토스: [${nextTeamIdx + 1}조 ${nextBatter.name}] (하나, 둘, 셋!)`;
             tossBanner.style.display = 'block';
 
-            // 사진은 계속 공개 상태 유지
+            // 사진은 계속 공개 상태 유지 (가림막 안 덮음)
             const curtain = document.getElementById('photo-curtain');
-            curtain.classList.add('revealed');
+            if (curtain) curtain.classList.add('revealed');
+            const img = document.getElementById('quiz-photo-img');
+            if (img) {
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+            }
             isPhotoRevealed = true;
         }
 
-        // ⏭️ 문제 패스 (모두 틀렸거나 MC가 넘길 때)
+        // ⏭️ 문제 패스 (아무도 못 맞혀서 MC가 넘길 때: [→] 키)
         function skipQuestion() {
+            clearCountdown();
             revealAnswer();
+
+            const hintText = document.getElementById('ans-hint-text');
+            if (hintText) hintText.innerHTML = `⏭️ <span style="color: var(--pink); font-weight: 800;">문제 패스!</span> (점수 없음, 1.5초 후 다음 문제)`;
+
             setTimeout(() => {
-                currentQuizIdx++;
-                currentOrderIdx = (currentOrderIdx + 1) % 4;
-                if (currentQuizIdx >= 20 || currentQuizIdx >= currentSetQuizzes.length) {
-                    completeGameSet();
-                } else {
-                    loadSetQuestion();
-                }
-            }, 600);
+                advanceToNextQuestion();
+            }, 1500);
         }
 
         // 한 게임 세트(20문제) 완료 처리
